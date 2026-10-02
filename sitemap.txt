@@ -1,3 +1,4 @@
 https://santndev.github.io/webreader-site/
 https://santndev.github.io/webreader-site/en-us/
 https://santndev.github.io/webreader-site/listen-to-web-pages-android/
+https://santndev.github.io/webreader-site/privacy-policy.html
