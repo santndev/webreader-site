@@ -22,9 +22,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Notify IndexNow about updated pages
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        env:
+          SITE_BASE: https://santndev.github.io/webreader-site
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          mapfile -t changed_html < <(git diff --name-only "$BEFORE" "$AFTER" -- '*.html')
+          (('${#changed_html[@]}')) || exit 0
+
+          key_file=$(find . -maxdepth 1 -type f -regextype posix-extended -regex './[0-9a-f]{32}\.txt' -print -quit)
+          if [ -z "$key_file" ]; then
+            echo "::warning::IndexNow key file is missing"
+            exit 0
+          fi
+          key=$(basename "$key_file" .txt)
+
+          urls=()
+          for file in "${changed_html[@]}"; do
+            if [ "$file" = "index.html" ]; then
+              path=/
+            elif [[ "$file" == */index.html ]]; then
+              path="/${file%index.html}"
+            else
+              path="/$file"
+            fi
+            urls+=("$SITE_BASE$path")
+          done
+
+          payload=$(printf '%s\n' "${urls[@]}" | jq -R . | jq -s \
+            --arg host santndev.github.io \
+            --arg key "$key" \
+            --arg keyLocation "$SITE_BASE/$key.txt" \
+            '{host:$host,key:$key,keyLocation:$keyLocation,urlList:.}')
+          if ! status=$(curl -sS -o /tmp/indexnow-response -w '%{http_code}' \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            -d "$payload" https://api.indexnow.org/indexnow); then
+            echo "::warning::IndexNow request failed; Pages deployment succeeded"
+            exit 0
+          fi
+          if [ "$status" = 200 ] || [ "$status" = 202 ]; then
+            echo "IndexNow received ${#urls[@]} changed page URL(s) (HTTP $status)"
+          else
+            echo "::warning::IndexNow returned HTTP $status: $(cat /tmp/indexnow-response)"
+          fi
