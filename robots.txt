@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 
+Sitemap: https://santndev.github.io/webreader-site/sitemap.xml
 Sitemap: https://santndev.github.io/webreader-site/sitemap.txt
 
