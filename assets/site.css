@@ -107,3 +107,6 @@ h1 span { color: var(--purple); }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: .01ms !important; }
 }
+.button[data-copy-article] { border: 0; cursor: pointer; font-family: inherit; }
+.button[data-copy-article]:disabled { opacity: .65; cursor: progress; }
+.copy-status { min-height: 1.6em; margin-top: 12px; color: var(--muted); }
